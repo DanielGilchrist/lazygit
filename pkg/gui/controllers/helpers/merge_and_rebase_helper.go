@@ -390,7 +390,7 @@ func (self *MergeAndRebaseHelper) MergeRefIntoCheckedOutBranch(refName string) e
 		Items: []*types.MenuItem{
 			{
 				Label:   self.c.Tr.RegularMerge,
-				OnPress: self.RegularMerge(refName),
+				OnPress: self.RegularMerge(refName, git_commands.MergeOpts{}),
 				Key:     'm',
 				Tooltip: utils.ResolvePlaceholderString(
 					self.c.Tr.RegularMergeTooltip,
@@ -399,6 +399,12 @@ func (self *MergeAndRebaseHelper) MergeRefIntoCheckedOutBranch(refName string) e
 						"selectedBranch":   refName,
 					},
 				),
+			},
+			{
+				Label:   "Merge with fast-forward option...",
+				OnPress: self.ShowFastForwardOptionMenu(refName),
+				Key:     'f',
+				Tooltip: "Merge with an explicit fast-forward option",
 			},
 			{
 				Label:   self.c.Tr.SquashMergeUncommittedTitle,
@@ -427,10 +433,35 @@ func (self *MergeAndRebaseHelper) MergeRefIntoCheckedOutBranch(refName string) e
 	})
 }
 
-func (self *MergeAndRebaseHelper) RegularMerge(refName string) func() error {
+func (self *MergeAndRebaseHelper) ShowFastForwardOptionMenu(refName string) func() error {
+	return func() error {
+		return self.c.Menu(types.CreateMenuOptions{
+			Title: "Merge with fast-forward option",
+			Items: []*types.MenuItem{
+				{
+					Label:   "--no-ff",
+					OnPress: self.RegularMerge(refName, git_commands.MergeOpts{NoFastForward: true}),
+					Tooltip: "always create a merge commit even if fast-forward is possible",
+				},
+				{
+					Label:   "--ff",
+					OnPress: self.RegularMerge(refName, git_commands.MergeOpts{FastForward: true}),
+					Tooltip: "fast-forward where possible, otherwise create a merge commit",
+				},
+				{
+					Label:   "--ff-only",
+					OnPress: self.RegularMerge(refName, git_commands.MergeOpts{FastForwardOnly: true}),
+					Tooltip: "fast-forward where possible, exit otherwise",
+				},
+			},
+		})
+	}
+}
+
+func (self *MergeAndRebaseHelper) RegularMerge(refName string, mergeOpts git_commands.MergeOpts) func() error {
 	return func() error {
 		self.c.LogAction(self.c.Tr.Actions.Merge)
-		err := self.c.Git().Branch.Merge(refName, git_commands.MergeOpts{})
+		err := self.c.Git().Branch.Merge(refName, mergeOpts)
 		return self.CheckMergeOrRebase(err)
 	}
 }

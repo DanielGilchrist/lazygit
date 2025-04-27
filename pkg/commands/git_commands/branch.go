@@ -237,6 +237,8 @@ func (self *BranchCommands) Rename(oldName string, newName string) error {
 
 type MergeOpts struct {
 	FastForwardOnly bool
+	FastForward     bool
+	NoFastForward   bool
 	Squash          bool
 }
 
@@ -244,10 +246,25 @@ func (self *BranchCommands) Merge(branchName string, opts MergeOpts) error {
 	if opts.Squash && opts.FastForwardOnly {
 		panic("Squash and FastForwardOnly can't both be true")
 	}
+	if opts.Squash && opts.FastForward {
+		panic("Squash and FastForward together is redundant")
+	}
+	if opts.FastForward && opts.FastForwardOnly {
+		panic("FastForward and FastForwardOnly together is redundant")
+	}
+	if opts.NoFastForward && opts.FastForward {
+		panic("NoFastForward and FastForward are mutually exclusive")
+	}
+	if opts.NoFastForward && opts.FastForwardOnly {
+		panic("NoFastForward and FastForwardOnly are mutually exclusive")
+	}
+
 	cmdArgs := NewGitCmd("merge").
 		Arg("--no-edit").
 		Arg(strings.Fields(self.UserConfig().Git.Merging.Args)...).
 		ArgIf(opts.FastForwardOnly, "--ff-only").
+		ArgIf(opts.FastForward, "--ff").
+		ArgIf(opts.NoFastForward, "--no-ff").
 		ArgIf(opts.Squash, "--squash", "--ff").
 		Arg(branchName).
 		ToArgv()
